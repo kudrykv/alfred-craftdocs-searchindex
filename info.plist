@@ -5,7 +5,21 @@
 	<key>bundleid</key>
 	<string>dev.kudrykv.craftsearchindex</string>
 	<key>connections</key>
-	<dict/>
+	<dict>
+		<key>8CA9109F-752D-41AB-82DB-D24417717127</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>FA7E479A-DC6E-4773-9BFA-3D97D4D53839</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+	</dict>
 	<key>createdby</key>
 	<string>Vitaliy Kudryk</string>
 	<key>description</key>
@@ -65,6 +79,29 @@
 			<key>version</key>
 			<integer>3</integer>
 		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>concurrently</key>
+				<false/>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>script</key>
+				<string>open "$@"</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>type</key>
+				<integer>0</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.script</string>
+			<key>uid</key>
+			<string>FA7E479A-DC6E-4773-9BFA-3D97D4D53839</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
 	</array>
 	<key>readme</key>
 	<string></string>
@@ -73,9 +110,16 @@
 		<key>8CA9109F-752D-41AB-82DB-D24417717127</key>
 		<dict>
 			<key>xpos</key>
-			<integer>290</integer>
+			<integer>10</integer>
 			<key>ypos</key>
-			<integer>320</integer>
+			<integer>10</integer>
+		</dict>
+		<key>FA7E479A-DC6E-4773-9BFA-3D97D4D53839</key>
+		<dict>
+			<key>xpos</key>
+			<integer>160</integer>
+			<key>ypos</key>
+			<integer>10</integer>
 		</dict>
 	</dict>
 	<key>webaddress</key>

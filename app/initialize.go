@@ -13,37 +13,37 @@ import (
 	"github.com/kudrykv/alfred-craftdocs-searchindex/app/types"
 )
 
-func initialize() (*sql.DB, *service.BlockService, error) {
+func initialize() (*sql.DB, *config.Config, *service.BlockService, error) {
 	cfg, err := config.NewConfig()
 	if err != nil {
-		return nil, nil, fmt.Errorf("get config: %w", err)
+		return nil, nil, nil, fmt.Errorf("get config: %w", err)
 	}
 
 	var db *sql.DB
 	if db, err = sql.Open("sqlite3_custom", cfg.PathToIndex()); err != nil {
-		return nil, nil, fmt.Errorf("sql open: %w", err)
+		return nil, nil, nil, fmt.Errorf("sql open: %w", err)
 	}
 
 	blockRepo := repository.NewBlockRepo(db)
 	blockService := service.NewBlockService(blockRepo)
 
-	return db, blockService, nil
+	return db, cfg, blockService, nil
 }
 
-func flow(ctx context.Context, args []string) ([]repository.Block, error) {
-	db, blockService, err := initialize()
+func flow(ctx context.Context, args []string) (*config.Config, []repository.Block, error) {
+	db, cfg, blockService, err := initialize()
 	if err != nil {
-		return nil, fmt.Errorf("initialize: %w", err)
+		return nil, nil, fmt.Errorf("initialize: %w", err)
 	}
 
 	defer func() { _ = db.Close() }()
 
 	blocks, err := blockService.Search(ctx, args)
 	if err != nil {
-		return nil, fmt.Errorf("search: %w", err)
+		return nil, nil, fmt.Errorf("search: %w", err)
 	}
 
-	return blocks, nil
+	return cfg, blocks, nil
 }
 
 func workflow(ctx context.Context, wf *aw.Workflow, args []string) func() {
@@ -51,7 +51,7 @@ func workflow(ctx context.Context, wf *aw.Workflow, args []string) func() {
 		defer wf.SendFeedback()
 		defer wf.WarnEmpty("No results", "")
 
-		blocks, err := flow(ctx, args)
+		cfg, blocks, err := flow(ctx, args)
 		if err != nil {
 			var te types.Error
 			if errors.As(err, &te) {
@@ -64,7 +64,12 @@ func workflow(ctx context.Context, wf *aw.Workflow, args []string) func() {
 		}
 
 		for _, block := range blocks {
-			wf.NewItem(block.Content).Subtitle(block.DocumentName).UID(block.ID).Arg(block.DocumentID).Valid(true)
+			wf.
+				NewItem(block.Content).
+				Subtitle(block.DocumentName).
+				UID(block.ID).
+				Arg("craftdocs://open?blockId=" + block.ID + "&spaceId=" + cfg.SpaceID).
+				Valid(true)
 		}
 	}
 }

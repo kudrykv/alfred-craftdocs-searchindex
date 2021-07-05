@@ -17,32 +17,31 @@ type Config struct {
 	//nolint:lll
 	IndexPathDir string `env:"INDEX_PATH_DIR" envDefault:"~/Library/Containers/com.lukilabs.lukiapp/Data/Library/Application Support/com.lukilabs.lukiapp/Search"`
 	IndexName    string
+	SpaceID      string
 }
 
-func (c Config) PathToIndex() string {
+func (c *Config) PathToIndex() string {
 	return filepath.Join(c.IndexPathDir, c.IndexName)
 }
 
-func NewConfig() (Config, error) {
+func NewConfig() (*Config, error) {
 	var config Config
 	if err := env.Parse(&config); err != nil {
-		return config, fmt.Errorf("parse: %w", err)
+		return nil, fmt.Errorf("parse: %w", err)
 	}
 
-	if !strings.HasPrefix(config.IndexPathDir, "~/") {
-		return config, nil
-	}
+	if strings.HasPrefix(config.IndexPathDir, "~/") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return nil, fmt.Errorf("user home dir: %w", err)
+		}
 
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return config, fmt.Errorf("user home dir: %w", err)
+		config.IndexPathDir = strings.Replace(config.IndexPathDir, "~", homeDir, 1)
 	}
-
-	config.IndexPathDir = strings.Replace(config.IndexPathDir, "~", homeDir, 1)
 
 	entries, err := os.ReadDir(config.IndexPathDir)
 	if err != nil {
-		return config, fmt.Errorf("read dir: %w", err)
+		return nil, fmt.Errorf("read dir: %w", err)
 	}
 
 	for _, entry := range entries {
@@ -52,14 +51,15 @@ func NewConfig() (Config, error) {
 
 		if regexIndexName.MatchString(entry.Name()) {
 			config.IndexName = entry.Name()
+			config.SpaceID = regexIndexName.FindStringSubmatch(entry.Name())[1]
 
 			break
 		}
 	}
 
 	if len(config.IndexName) == 0 {
-		return config, errors.New("did not find index file")
+		return nil, errors.New("did not find index file")
 	}
 
-	return config, nil
+	return &config, nil
 }

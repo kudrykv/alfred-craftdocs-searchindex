@@ -122,6 +122,10 @@
 			<integer>10</integer>
 		</dict>
 	</dict>
+	<key>variablesdontexport</key>
+	<array/>
+	<key>version</key>
+	<string>0.1.0</string>
 	<key>webaddress</key>
 	<string></string>
 </dict>

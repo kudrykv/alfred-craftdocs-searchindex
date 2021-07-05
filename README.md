@@ -4,7 +4,7 @@ Search in Craft document with Craft Search Index.
 
 ## Install
 Download
-[the latest release](https://github.com/kudrykv/alfred-craftdocs-searchindex/releases/tag/v0.1.0),
+[the latest release](https://github.com/kudrykv/alfred-craftdocs-searchindex/releases/tag/v0.1.1),
 double-click it and proceed with Alfred instructions.
 Use `amd64` for Intel chips and `arm64` for M1 chips.
 

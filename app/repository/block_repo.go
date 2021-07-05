@@ -30,7 +30,7 @@ func (b *BlockRepo) Search(ctx context.Context, terms []string) ([]Block, error)
 
 	for i, term := range terms {
 		parts = append(parts, "utf8lower(ifnull(content, '')) like ?"+strconv.Itoa(i+1))
-		termsIface = append(termsIface, "%"+term+"%")
+		termsIface = append(termsIface, "%"+strings.ToLower(term)+"%")
 	}
 
 	query := "select id, content, documentId from BlockSearch where " + strings.Join(parts, " and ") + " limit 40"

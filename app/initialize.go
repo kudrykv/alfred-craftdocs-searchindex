@@ -49,7 +49,11 @@ func flow(ctx context.Context, args []string) (*config.Config, []repository.Bloc
 func workflow(ctx context.Context, wf *aw.Workflow, args []string) func() {
 	return func() {
 		defer wf.SendFeedback()
-		defer wf.WarnEmpty("No results", "")
+		defer func() {
+			if wf.IsEmpty() {
+				wf.NewItem("No results")
+			}
+		}()
 
 		cfg, blocks, err := flow(ctx, args)
 		if err != nil {

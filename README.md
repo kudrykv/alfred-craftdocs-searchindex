@@ -8,6 +8,14 @@ Download
 double-click it and proceed with Alfred instructions.
 Use `amd64` for Intel chips and `arm64` for M1 chips.
 
+## Search
+Run `cs <query>` to look for documents.
+It opens the page with the result.
+
+![](search_1.png)
+
+![](search_2.png)
+
 ## Authorization
 The first time you use the workflow after install or update, you will see the security warning:
 <img alt="unidentified developer security warning" src="security_warning.jpeg" width="400">
@@ -19,11 +27,3 @@ After seeing this warning, you have to go to
 and click the new button that has appeared to allow the executable to run.
 You then have to run it again, and you will see this security warning again,
 but now it will have a new button that lets you allow the executable to run.
-
-## Search
-Run `cs <query>` to look for documents.
-It opens the page with the result.
-
-![](search_1.png)
-
-![](search_2.png)

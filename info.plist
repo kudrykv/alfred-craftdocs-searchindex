@@ -4,6 +4,8 @@
 <dict>
 	<key>bundleid</key>
 	<string>dev.kudrykv.craftsearchindex</string>
+	<key>category</key>
+	<string>Productivity</string>
 	<key>connections</key>
 	<dict>
 		<key>8CA9109F-752D-41AB-82DB-D24417717127</key>
@@ -127,6 +129,6 @@
 	<key>version</key>
 	<string>0.1.0</string>
 	<key>webaddress</key>
-	<string></string>
+	<string>https://github.com/kudrykv/alfred-craftdocs-searchindex</string>
 </dict>
 </plist>

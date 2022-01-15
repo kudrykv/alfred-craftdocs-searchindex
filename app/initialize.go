@@ -13,30 +13,37 @@ import (
 	"github.com/kudrykv/alfred-craftdocs-searchindex/app/types"
 )
 
-func initialize() (*sql.DB, *config.Config, *service.BlockService, error) {
+func initialize() (*config.Config, *service.BlockService, error) {
 	cfg, err := config.NewConfig()
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("get config: %w", err)
+		return nil, nil, fmt.Errorf("get config: %w", err)
 	}
 
-	var db *sql.DB
-	if db, err = sql.Open("sqlite3_custom", cfg.PathToIndex()); err != nil {
-		return nil, nil, nil, fmt.Errorf("sql open: %w", err)
+	var spaces []repository.Space
+	for _, si := range cfg.SearchIndexes() {
+		db, err := sql.Open("sqlite3_custom", si.Path())
+		if err != nil {
+			return nil, nil, fmt.Errorf("sql open: %w", err)
+		}
+		spaces = append(spaces, repository.Space{
+			ID: si.SpaceID,
+			DB: db,
+		})
 	}
 
-	blockRepo := repository.NewBlockRepo(db)
+	blockRepo := repository.NewBlockRepo(spaces...)
 	blockService := service.NewBlockService(blockRepo)
 
-	return db, cfg, blockService, nil
+	return cfg, blockService, nil
 }
 
 func flow(ctx context.Context, args []string) (*config.Config, []repository.Block, error) {
-	db, cfg, blockService, err := initialize()
+	cfg, blockService, err := initialize()
 	if err != nil {
 		return nil, nil, fmt.Errorf("initialize: %w", err)
 	}
 
-	defer func() { _ = db.Close() }()
+	defer func() { _ = blockService.Close() }()
 
 	blocks, err := blockService.Search(ctx, args)
 	if err != nil {
@@ -55,7 +62,7 @@ func workflow(ctx context.Context, wf *aw.Workflow, args []string) func() {
 			}
 		}()
 
-		cfg, blocks, err := flow(ctx, args)
+		_, blocks, err := flow(ctx, args)
 		if err != nil {
 			var te types.Error
 			if errors.As(err, &te) {
@@ -72,7 +79,7 @@ func workflow(ctx context.Context, wf *aw.Workflow, args []string) func() {
 				NewItem(block.Content).
 				Subtitle(block.DocumentName).
 				UID(block.ID).
-				Arg("craftdocs://open?blockId=" + block.ID + "&spaceId=" + cfg.SpaceID).
+				Arg("craftdocs://open?blockId=" + block.ID + "&spaceId=" + block.SpaceID).
 				Valid(true)
 		}
 	}

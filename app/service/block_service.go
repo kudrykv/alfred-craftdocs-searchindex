@@ -13,6 +13,10 @@ type BlockService struct {
 	br *repository.BlockRepo
 }
 
+func (bs *BlockService) Close() error {
+	return bs.br.Close()
+}
+
 func NewBlockService(br *repository.BlockRepo) *BlockService {
 	return &BlockService{br: br}
 }

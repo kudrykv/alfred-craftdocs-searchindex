@@ -51,14 +51,63 @@ func (b *Block) IsDocument() bool {
 	return b.EntityType == "document"
 }
 
-func (b *BlockRepo) Search(ctx context.Context, terms []string) ([]Block, error) {
-	parts := make([]string, 0, len(terms))
-	termsIface := make([]interface{}, 0, len(terms))
-
-	for i, term := range terms {
-		parts = append(parts, "utf8lower(ifnull(content, '')) like ?"+strconv.Itoa(i+1))
-		termsIface = append(termsIface, "%"+strings.ToLower(term)+"%")
+// buildMatchQuery creates a FTS5 match query that searches both content
+// and exactMatchContent (only set for documents). Content is used for
+// regular full-text search and including exactMatchContent allows for
+// searches like "mylist" that will match a document named "My List".
+// This works slightly better than in Craft since we're "globbing" the
+// term so that it will also match "My List Of Things" (unlike Craft).
+//
+// Example output:
+//
+// 	{content exactMatchContent} : ("my" "todo") OR ("my" "todo"*) OR ("my"* "todo"*)
+// 	{content exactMatchContent} : ("mytodo") OR ("mytodo"*)
+//
+func buildMatchQuery(terms []string) string {
+	if len(terms) == 0 {
+		return ""
 	}
+
+	var quotedTerms []string
+	for _, term := range terms {
+		// Quote the term to avoid FTS5 bareword input sanitization.
+		// https://www.sqlite.org/fts5.html#fts5_strings
+		quotedTerms = append(quotedTerms, fmt.Sprintf("%q", term))
+	}
+	// Create different permutations of the match phrase (with and
+	// without "globbing") in an attempt to give more weight (rank)
+	// to non-"globbed" terms. The last form where every term is
+	// followed by * will return all results, however, including the
+	// former increases the weight of more exact results and more
+	// closely matches the search results produced by Craft.
+	//
+	// Further permutations can include + between terms which
+	// matches terms immediately following each other, but this does
+	// not seem to affect the weights too much.
+	//
+	// In many cases, this matches the results returned by Craft but
+	// often something can be slightly out of order. Without knowing
+	// the exact sort criteria used in Craft we'll have to settle
+	// for "good enough". For example, they could be using create or
+	// modification date or frequency of access which we do not have
+	// access to.
+	matchPhrases := []string{
+		strings.Join(quotedTerms, " "),       // '"term1" "term2"'
+		strings.Join(quotedTerms, " ") + "*", // '"term1" "term2"*'
+	}
+	// Avoid unnecessarily repeating the result produced previously.
+	if len(quotedTerms) > 1 {
+		matchPhrases = append(matchPhrases, strings.Join(quotedTerms, "* ")+"*") // '"term1"* "term2"*'
+	}
+
+	matchQuery := fmt.Sprintf("{content exactMatchContent} : (%s)", strings.Join(matchPhrases, ") OR ("))
+
+	return matchQuery
+}
+
+func (b *BlockRepo) Search(ctx context.Context, terms []string) ([]Block, error) {
+	matchQuery := buildMatchQuery(terms)
+	log.Printf("Searching with matchQuery: '%s'", matchQuery)
 
 	blocks := make([]Block, 0, 40)
 	for _, space := range b.spaces {
@@ -68,8 +117,27 @@ func (b *BlockRepo) Search(ctx context.Context, terms []string) ([]Block, error)
 		}
 		log.Printf("Searching %s, limit %d", space.ID, limit)
 
-		query := fmt.Sprintf("select id, content, entityType, documentId from BlockSearch where %s limit %d", strings.Join(parts, " and "), limit)
-		rows, err := space.DB.QueryContext(ctx, query, termsIface...)
+		var rows *sql.Rows
+		var err error
+		if len(matchQuery) > 0 {
+			query := `
+				SELECT id, content, entityType, documentId
+				FROM BlockSearch(?)
+				ORDER BY rank + customRank
+				LIMIT ?
+			`
+			rows, err = space.DB.QueryContext(ctx, query, matchQuery, limit)
+		} else {
+			// No search terms were provided, fallback to listing
+			// all results according to whatever custom rank Craft
+			// has assigned them. Documents have a much lower
+			// customRank than blocks, so with 40+ documents all
+			// results will be documents. The results seems to be
+			// sorted in an order approximating recently accessed,
+			// edited or created.
+			query := "SELECT id, content, entityType, documentId FROM BlockSearch ORDER BY customRank LIMIT ?"
+			rows, err = space.DB.QueryContext(ctx, query, limit)
+		}
 		if err != nil {
 			return nil, types.NewError("failed to query database", err)
 		}

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sort"
 
 	aw "github.com/deanishe/awgo"
 	"github.com/kudrykv/alfred-craftdocs-searchindex/app/config"
@@ -73,6 +74,18 @@ func workflow(ctx context.Context, wf *aw.Workflow, args []string) func() {
 
 			return
 		}
+
+		// Sort all documents (across spaces) on top, whilst maintaining
+		// order, primary space documents will always be on top.
+		sort.SliceStable(blocks, func(i, j int) bool {
+			if blocks[i].IsDocument() && !blocks[j].IsDocument() {
+				return true
+			}
+			if !blocks[i].IsDocument() && blocks[j].IsDocument() {
+				return false
+			}
+			return i < j
+		})
 
 		for _, block := range blocks {
 			wf.

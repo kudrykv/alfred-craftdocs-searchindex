@@ -42,8 +42,13 @@ type Block struct {
 	ID           string
 	SpaceID      string
 	Content      string
+	EntityType   string
 	DocumentID   string
 	DocumentName string
+}
+
+func (b *Block) IsDocument() bool {
+	return b.EntityType == "document"
 }
 
 func (b *BlockRepo) Search(ctx context.Context, terms []string) ([]Block, error) {
@@ -63,7 +68,7 @@ func (b *BlockRepo) Search(ctx context.Context, terms []string) ([]Block, error)
 		}
 		log.Printf("Searching %s, limit %d", space.ID, limit)
 
-		query := fmt.Sprintf("select id, content, documentId from BlockSearch where %s limit %d", strings.Join(parts, " and "), limit)
+		query := fmt.Sprintf("select id, content, entityType, documentId from BlockSearch where %s limit %d", strings.Join(parts, " and "), limit)
 		rows, err := space.DB.QueryContext(ctx, query, termsIface...)
 		if err != nil {
 			return nil, types.NewError("failed to query database", err)
@@ -72,7 +77,7 @@ func (b *BlockRepo) Search(ctx context.Context, terms []string) ([]Block, error)
 		for rows.Next() {
 			block := Block{SpaceID: space.ID}
 
-			if err = rows.Scan(&block.ID, &block.Content, &block.DocumentID); err != nil {
+			if err = rows.Scan(&block.ID, &block.Content, &block.EntityType, &block.DocumentID); err != nil {
 				return nil, types.NewError("failed to scan a row", err)
 			}
 
@@ -112,13 +117,14 @@ func (b *BlockRepo) BackfillDocumentNames(ctx context.Context, blocks []Block) (
 		b := blocksBySpace[space.ID]
 
 		ids := make([]interface{}, 0, len(b))
-		for _, k := range b {
-			ids = append(ids, k.DocumentID)
-		}
-
 		placeholders := make([]string, 0, len(ids))
-		for i := range ids {
-			placeholders = append(placeholders, "?"+strconv.Itoa(i+1))
+		for _, k := range b {
+			if k.IsDocument() {
+				// This is a document, no need to fetch title.
+				continue
+			}
+			ids = append(ids, k.DocumentID)
+			placeholders = append(placeholders, "?"+strconv.Itoa(len(ids)))
 		}
 
 		query := `select documentId, content from BlockSearch where entityType = 'document' and documentId in (` + strings.Join(placeholders, ", ") + ")"
@@ -151,7 +157,11 @@ func (b *BlockRepo) BackfillDocumentNames(ctx context.Context, blocks []Block) (
 	copy(backfilled, blocks)
 
 	for i, block := range backfilled {
-		backfilled[i].DocumentName = docIDs[docKey{spaceID: block.SpaceID, docID: block.DocumentID}]
+		if block.IsDocument() {
+			backfilled[i].DocumentName = "[Document]"
+		} else {
+			backfilled[i].DocumentName = "[Block] " + docIDs[docKey{spaceID: block.SpaceID, docID: block.DocumentID}]
+		}
 	}
 
 	return backfilled, nil

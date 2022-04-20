@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/url"
 	"sort"
+	"strings"
 
 	aw "github.com/deanishe/awgo"
 	"github.com/kudrykv/alfred-craftdocs-searchindex/app/config"
@@ -63,7 +65,7 @@ func workflow(ctx context.Context, wf *aw.Workflow, args []string) func() {
 			}
 		}()
 
-		_, blocks, err := flow(ctx, args)
+		config, blocks, err := flow(ctx, args)
 		if err != nil {
 			var te types.Error
 			if errors.As(err, &te) {
@@ -73,6 +75,10 @@ func workflow(ctx context.Context, wf *aw.Workflow, args []string) func() {
 			}
 
 			return
+		}
+
+		if len(blocks) == 0 {
+			addCreateNewDocument(wf, config, args)
 		}
 
 		// Sort all documents (across spaces) on top, whilst maintaining
@@ -87,7 +93,14 @@ func workflow(ctx context.Context, wf *aw.Workflow, args []string) func() {
 			return i < j
 		})
 
+		newDocumentEntryAdded := false
 		for _, block := range blocks {
+			// Append new document after documents but before
+			// individual blocks.
+			if !newDocumentEntryAdded && !block.IsDocument() {
+				addCreateNewDocument(wf, config, args)
+				newDocumentEntryAdded = true
+			}
 			wf.
 				NewItem(block.Content).
 				Subtitle(block.DocumentName).
@@ -96,4 +109,15 @@ func workflow(ctx context.Context, wf *aw.Workflow, args []string) func() {
 				Valid(true)
 		}
 	}
+}
+
+func addCreateNewDocument(wf *aw.Workflow, config *config.Config, args []string) {
+	name := strings.Join(args, " ")
+	title := fmt.Sprintf("Create %q", name)
+	url := fmt.Sprintf("craftdocs://createdocument?spaceId=%s&title=%s&content=&folderId=", config.SearchIndexes()[0].SpaceID, url.PathEscape(name))
+	wf.
+		NewItem(title).
+		UID(title).
+		Arg(url).
+		Valid(true)
 }

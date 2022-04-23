@@ -72,6 +72,7 @@ func buildMatchQuery(terms []string) string {
 	for _, term := range terms {
 		// Quote the term to avoid FTS5 bareword input sanitization.
 		// https://www.sqlite.org/fts5.html#fts5_strings
+		term = strings.ReplaceAll(term, "\"", " ")
 		quotedTerms = append(quotedTerms, fmt.Sprintf("%q", term))
 	}
 	// Create different permutations of the match phrase (with and

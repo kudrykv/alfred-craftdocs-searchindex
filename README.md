@@ -2,6 +2,14 @@
 
 Search in Craft document with Craft Search Index.
 
+---
+
+#### Alternative references
+
+[Craft extension](https://www.raycast.com/bgnfu7re/craftdocs) for [Raycast](https://www.raycast.com/).
+
+---
+
 ## Install
 Download
 [the latest release](https://github.com/kudrykv/alfred-craftdocs-searchindex/releases/tag/v0.1.2),
